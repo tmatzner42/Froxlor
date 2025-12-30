@@ -94,7 +94,7 @@ class Rspamd
 				WHERE `dkim` = '1'
 				ORDER BY `id` ASC
 			");
-
+        dkim_year = '_' . date('Y'); // aktuelles Jahr ermitteln
 		while ($domain = $result_domains_stmt->fetch(\PDO::FETCH_ASSOC)) {
 
 			if ($domain['dkim_privkey'] == '' || $domain['dkim_pubkey'] == '') {
@@ -102,13 +102,13 @@ class Rspamd
 				$max_dkim_id = $max_dkim_id_stmt->fetch(\PDO::FETCH_ASSOC);
 				$domain['dkim_id'] = (int)$max_dkim_id['max_dkim_id'] + 1;
 
-				$privkey_filename = FileDir::makeCorrectFile('/var/lib/rspamd/dkim/' . $domain['domain'] . '.dkim' . $domain['dkim_id'] . '.key');
-				$pubkey_filename = FileDir::makeCorrectFile('/var/lib/rspamd/dkim/' . $domain['domain'] . '.dkim' . $domain['dkim_id'] . '.txt');
+				$privkey_filename = FileDir::makeCorrectFile('/var/lib/rspamd/dkim/' . $domain['domain'] . '.dkim' . $domain['dkim_id'] . $dkim_year . '.key');
+				$pubkey_filename = FileDir::makeCorrectFile('/var/lib/rspamd/dkim/' . $domain['domain'] . '.dkim' . $domain['dkim_id'] . $dkim_year . '.txt');
 
 				$this->logger->logAction(FroxlorLogger::CRON_ACTION, LOG_INFO, 'Generating DKIM keys for "' . $domain['domain'] . '"');
 				$rsret = [];
 				FileDir::safe_exec(
-					'rspamadm dkim_keygen -d ' . escapeshellarg($domain['domain']) . ' -k ' . $privkey_filename . ' -s dkim' . $domain['dkim_id'] . ' -b ' . Settings::Get('antispam.dkim_keylength') . ' -o plain > ' . escapeshellarg($pubkey_filename),
+					'rspamadm dkim_keygen -d ' . escapeshellarg($domain['domain']) . ' -k ' . $privkey_filename . ' -s dkim' . $domain['dkim_id'] . $dkim_year . ' -b ' . Settings::Get('antispam.dkim_keylength') . ' -o plain > ' . escapeshellarg($pubkey_filename),
 					$rsret,
 					['>']
 				);
@@ -153,7 +153,7 @@ class Rspamd
 				FileDir::safe_exec("chown _rspamd:_rspamd " . escapeshellarg($pubkey_filename));
 			}
 
-			$dkim_selector_map .= $domain['domain'] . " dkim" . $domain['dkim_id'] . "\n";
+			$dkim_selector_map .= $domain['domain'] . " dkim" . $domain['dkim_id'] . $dkim_year . "\n";
 		}
 
 		$dkim_selector_file = FileDir::makeCorrectFile('/etc/rspamd/dkim_selectors.map');
